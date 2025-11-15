@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Classic Snake</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="game-shell">
+      <div class="heading">
+        <h1>Snake</h1>
+        <button id="restart" type="button" aria-label="Restart game">Restart</button>
+      </div>
+      <canvas id="board" width="400" height="400" aria-label="Snake board"></canvas>
+      <section class="hud">
+        <p class="score">Score: <span id="score">0</span></p>
+        <button id="playPause" type="button" aria-label="Pause or resume">Pause</button>
+      </section>
+      <p class="helper">
+        Use the arrow keys (or W/A/S/D) to move the snake. Press spacebar to pause.
+        On touch screens, swipe to move.
+      </p>
+    </main>
+    <script src="script.js"></script>
+  </body>
+</html>
