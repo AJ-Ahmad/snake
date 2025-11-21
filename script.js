@@ -1,25 +1,33 @@
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
 const scoreEl = document.getElementById('score');
+const bestEl = document.getElementById('best');
+const speedEl = document.getElementById('speed');
 const playPauseBtn = document.getElementById('playPause');
 const restartBtn = document.getElementById('restart');
 const helperText = document.querySelector('.helper');
+const statusText = document.getElementById('status');
 
 const tileSize = 20;
 const tiles = canvas.width / tileSize;
 const baseSpeed = 120;
+const bestKey = 'classic-snake-best';
 
 let snake = [];
 let direction = { x: 1, y: 0 };
 let nextDirection = { x: 1, y: 0 };
 let food = { x: 10, y: 10 };
 let score = 0;
-let loopId = null;
+let best = 0;
 let paused = false;
 let gameOver = false;
 let touchStart = null;
+let accumulator = 0;
+let lastTime = 0;
+let frameId = null;
 
 function init() {
+  best = loadBestScore();
   snake = [
     { x: 8, y: 10 },
     { x: 7, y: 10 },
@@ -33,21 +41,40 @@ function init() {
   gameOver = false;
   helperText.textContent =
     'Use the arrow keys (or W/A/S/D) to move the snake. Press spacebar to pause.';
+  setStatus('Game on! Collect food and avoid the walls or yourself.');
   playPauseBtn.textContent = 'Pause';
   playPauseBtn.disabled = false;
   updateScore();
+  updateBest(best);
+  updateSpeedDisplay();
   draw();
   startLoop();
 }
 
 function startLoop() {
-  if (loopId) clearInterval(loopId);
-  loopId = setInterval(() => {
+  if (frameId) cancelAnimationFrame(frameId);
+  accumulator = 0;
+  lastTime = 0;
+  const tick = (timestamp) => {
+    if (!lastTime) lastTime = timestamp;
+    const delta = timestamp - lastTime;
+    lastTime = timestamp;
+
     if (!paused && !gameOver) {
-      step();
+      accumulator += delta;
+      const speedMs = getSpeedMs();
+
+      while (accumulator >= speedMs) {
+        step();
+        accumulator -= speedMs;
+      }
       draw();
     }
-  }, baseSpeed);
+
+    frameId = requestAnimationFrame(tick);
+  };
+
+  frameId = requestAnimationFrame(tick);
 }
 
 function step() {
@@ -57,16 +84,26 @@ function step() {
     y: snake[0].y + direction.y,
   };
 
-  if (hitsWall(head) || hitsSelf(head)) {
+  const willGrow = head.x === food.x && head.y === food.y;
+
+  if (hitsWall(head)) {
+    endGame();
+    return;
+  }
+
+  const bodyToCheck = willGrow ? snake : snake.slice(0, snake.length - 1);
+  if (hitsSelf(head, bodyToCheck)) {
     endGame();
     return;
   }
 
   snake.unshift(head);
 
-  if (head.x === food.x && head.y === food.y) {
+  if (willGrow) {
     score += 10;
     updateScore();
+    updateBest(score);
+    updateSpeedDisplay();
     food = createFood();
   } else {
     snake.pop();
@@ -77,12 +114,13 @@ function hitsWall({ x, y }) {
   return x < 0 || x >= tiles || y < 0 || y >= tiles;
 }
 
-function hitsSelf(head) {
-  return snake.some((segment) => segment.x === head.x && segment.y === head.y);
+function hitsSelf(head, body = snake) {
+  return body.some((segment) => segment.x === head.x && segment.y === head.y);
 }
 
 function createFood() {
   let point;
+  if (snake.length >= tiles * tiles) return { x: 0, y: 0 };
   do {
     point = {
       x: Math.floor(Math.random() * tiles),
@@ -133,6 +171,15 @@ function updateScore() {
   scoreEl.textContent = score.toString();
 }
 
+function updateBest(currentScore) {
+  if (typeof currentScore === 'number' && currentScore > best) {
+    best = currentScore;
+    localStorage.setItem(bestKey, best.toString());
+  }
+
+  bestEl.textContent = best.toString();
+}
+
 function setDirection(newDir) {
   if (gameOver) return;
   const isOpposite = newDir.x === -direction.x && newDir.y === -direction.y;
@@ -140,10 +187,31 @@ function setDirection(newDir) {
   nextDirection = newDir;
 }
 
+function getSpeedMs() {
+  const bonus = Math.floor(score / 50) * 8;
+  return Math.max(60, baseSpeed - bonus);
+}
+
+function updateSpeedDisplay() {
+  const speedMs = getSpeedMs();
+  const multiplier = (baseSpeed / speedMs).toFixed(1);
+  speedEl.textContent = `${multiplier}x`;
+}
+
+function setStatus(message) {
+  statusText.textContent = message;
+}
+
+function loadBestScore() {
+  const stored = parseInt(localStorage.getItem(bestKey) || '0', 10);
+  return Number.isFinite(stored) && stored > 0 ? stored : 0;
+}
+
 function handleKeydown(event) {
   const { key } = event;
   const normalizedKey = key.toLowerCase();
   if (normalizedKey === ' ') {
+    event.preventDefault();
     togglePause();
     return;
   }
@@ -169,11 +237,13 @@ function togglePause() {
   if (gameOver) return;
   paused = !paused;
   playPauseBtn.textContent = paused ? 'Resume' : 'Pause';
+  setStatus(paused ? 'Paused. Press spacebar or Resume to continue.' : 'Running.');
 }
 
 function endGame() {
   gameOver = true;
   playPauseBtn.textContent = 'Game Over';
+  setStatus('Game over. Press Restart or R to try again.');
   helperText.textContent = 'Game over! Hit restart or press R to try again.';
 }
 
