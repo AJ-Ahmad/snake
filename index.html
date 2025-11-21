@@ -14,9 +14,21 @@
       </div>
       <canvas id="board" width="600" height="600" aria-label="Snake board"></canvas>
       <section class="hud">
-        <p class="score">Score: <span id="score">0</span></p>
+        <div class="stat">
+          <p class="label">Score</p>
+          <p class="value" id="score">0</p>
+        </div>
+        <div class="stat">
+          <p class="label">Best</p>
+          <p class="value" id="best">0</p>
+        </div>
+        <div class="stat">
+          <p class="label">Speed</p>
+          <p class="value" id="speed">1x</p>
+        </div>
         <button id="playPause" type="button" aria-label="Pause or resume">Pause</button>
       </section>
+      <p class="status" id="status">Ready to play.</p>
       <p class="helper">
         Use the arrow keys (or W/A/S/D) to move the snake. Press spacebar to pause.
         On touch screens, swipe to move.
